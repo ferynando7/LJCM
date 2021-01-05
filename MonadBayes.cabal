@@ -39,7 +39,7 @@ library
       mwc-random,
       -- splitmix,
       hvega,
-      ihaskell-hvega,
+      --ihaskell-hvega,
       aeson,
       bytestring,
       text,

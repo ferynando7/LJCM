@@ -2,7 +2,6 @@ module FirstSteps where
 
 import System.Random.MWC (createSystemRandom)
 import qualified Graphics.Vega.VegaLite as VL
-import IHaskell.Display.Hvega (vlShow)
 import Data.Aeson (ToJSON(toJSON), Value)
 import Data.Aeson (encode)
 import qualified Data.ByteString.Lazy.Char8 as BL

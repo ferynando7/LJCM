@@ -45,7 +45,7 @@ extra-deps:
 - mwc-random-0.14.0.0
 # - splitmix-0.1.0.3
 - hvega-0.10.0.0
-- ihaskell-hvega-0.3.1.0
+#- ihaskell-hvega-0.3.1.0
 - ihaskell-0.10.1.0
 - aeson-1.4.6.0
 - time-compat-1.9.5

@@ -26,13 +26,6 @@ packages:
   original:
     hackage: hvega-0.10.0.0
 - completed:
-    hackage: ihaskell-hvega-0.3.1.0@sha256:1c631155c6fc752b74015be2c08af377ce99b27a2a081358d7f863eb4138ae6d,1182
-    pantry-tree:
-      size: 430
-      sha256: 61d7734045589ff3d8adbbead5772816138c7e55b394feb4dd5acb20554e5ea2
-  original:
-    hackage: ihaskell-hvega-0.3.1.0
-- completed:
     hackage: ihaskell-0.10.1.0@sha256:f45e52e4258ab9f5e8b9ad82a934f29f82c4abe980244920ebc05a3aa424e2fa,6492
     pantry-tree:
       size: 2359

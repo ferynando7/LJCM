@@ -4,7 +4,6 @@ import Control.Monad.Bayes.Sampler
 import Control.Monad
 import qualified Graphics.Vega.VegaLite as VL
 import qualified Graphics.Vega.Tutorials.VegaLite as VT
-import IHaskell.Display.Hvega
 import Data.Text (Text, pack)
 import FirstSteps
 
