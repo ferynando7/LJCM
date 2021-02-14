@@ -2,14 +2,15 @@ module FirstSteps where
 
 import System.Random.MWC (createSystemRandom)
 import qualified Graphics.Vega.VegaLite as VL
-import Data.Aeson (ToJSON(toJSON), Value)
-import Data.Aeson (encode)
+--import Data.Aeson (ToJSON(toJSON), Value)
+--import Data.Aeson (encode)
 import qualified Data.ByteString.Lazy.Char8 as BL
-import Data.Text (Text, pack)
+
+import Data.List (sort, partition)
 
 import Control.Monad (liftM2, replicateM, forM, forM_)
 import Control.Monad.IO.Class (liftIO)
-import Data.List (sort)
+
 import Control.Monad.Bayes.Class
 import Control.Monad.Bayes.Sampler
 import Control.Monad.Bayes.Traced
@@ -19,114 +20,100 @@ import Control.Monad.Bayes.Inference.RMSMC as RMSMC
 import Control.Monad.Bayes.Sequential
 import Control.Monad.Bayes.Population
 import Control.Monad.Bayes.Traced.Static (Traced)
-import Control.Monad.Bayes.Inference.SMC
 
 import Numeric.Log
-import Control.Monad.Bayes.Class
 
-import Data.List (partition)
-
-
-
-barPlot :: Text -> VL.VLSpec
-barPlot xName = 
-    let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PmType VL.Nominal]
-            . VL.position VL.Y [VL.PName (pack "binnedData"), VL.PAggregate VL.Count, VL.PmType VL.Quantitative, VL.PAxis [VL.AxTitle (pack "count")]]
-    in VL.asSpec [VL.mark VL.Bar [VL.MOpacity 1.0, VL.MColor (pack "#a3c6de")], encoding []]
-
-linePlot :: Text -> Text -> VL.VLSpec
-linePlot xName yName = 
-  let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PmType VL.Quantitative]
-            . VL.position VL.Y [VL.PName yName, VL.PmType VL.Quantitative]
-  in VL.asSpec [VL.mark VL.Line [VL.MColor (pack "blue")], encoding []]
-
-scatterBlue xName yName (xmin, xmax) (ymin, ymax) =
-  let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PmType VL.Quantitative, VL.PScale [VL.SDomain $ VL.DNumbers [xmin, xmax]]]
-            . VL.position VL.Y [VL.PName yName, VL.PmType VL.Quantitative, VL.PScale [VL.SDomain $ VL.DNumbers [ymin, ymax]]]
-  in VL.asSpec [VL.mark VL.Circle [VL.MColor (pack "blue")], encoding []]
-  
-scatterGreen xName yName (xmin, xmax) (ymin, ymax) =
-  let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PmType VL.Quantitative, VL.PScale [VL.SDomain $ VL.DNumbers [xmin, xmax]]]
-            . VL.position VL.Y [VL.PName yName, VL.PmType VL.Quantitative, VL.PScale [VL.SDomain $ VL.DNumbers [ymin, ymax]]]
-  in VL.asSpec [VL.mark VL.Circle [VL.MColor (pack "green")], encoding []]
-  
-scatterPlotWithColor :: Text -> Text -> Text -> (Double, Double) -> (Double, Double) -> VL.VLSpec
-scatterPlotWithColor xName yName zName (xmin, xmax) (ymin, ymax) =
-  let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PmType VL.Quantitative, VL.PScale [VL.SDomain $ VL.DNumbers [xmin, xmax]]]
-            . VL.position VL.Y [VL.PName yName, VL.PmType VL.Quantitative, VL.PScale [VL.SDomain $ VL.DNumbers [ymin, ymax]]]
-            . VL.color [ VL.MName zName, VL.MmType VL.Quantitative, VL.MScale [VL.SScheme (pack "blues") [0.0, 1.0]]]
-  in VL.asSpec [VL.mark VL.Circle [], encoding []]
-
-density2DPlot :: Text -> Text -> (Double, Double) -> (Double, Double) -> VL.VLSpec
-density2DPlot xName yName (xmin, xmax) (ymin, ymax) = 
-  let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PBin [VL.Nice False, VL.Steps [0.05, 0.5, 5.0], VL.Extent xmin xmax], VL.PmType VL.Quantitative]
-            . VL.position VL.Y [VL.PName yName, VL.PBin [VL.Nice False, VL.Steps [0.05, 0.5, 5.0], VL.Extent ymin ymax], VL.PmType VL.Quantitative]
-            . VL.color [ VL.MAggregate VL.Count, VL.MName (pack "col"), VL.MmType VL.Quantitative, VL.MScale [VL.SScheme (pack "blues") [0.0, 1.0]]]
-  in VL.asSpec [VL.mark VL.Rect [], encoding []]
-
-imagePlot :: Text -> Text -> Text -> VL.VLSpec
-imagePlot xName yName zName =
-  let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PmType VL.Nominal, VL.PAxis [VL.AxGridOpacity 0.1]]
-            . VL.position VL.Y [VL.PName yName, VL.PmType VL.Nominal, VL.PSort [VL.Descending], VL.PAxis [VL.AxGridOpacity 0.1]]
-            . VL.fill [ VL.MName zName, VL.MmType VL.Quantitative, VL.MScale [VL.SScheme (pack "blues") [0.0, 1.0]]]
-            . VL.stroke [ VL.MName zName, VL.MmType VL.Quantitative, VL.MScale [VL.SScheme (pack "blues") [0.0, 1.0]],
-                          VL.MLegend [VL.LType VL.GradientLegend]]
-  in VL.asSpec [VL.mark VL.Rect [], encoding []]
-  
-imageFacetPlot :: Text -> Text -> Text -> VL.VLSpec
-imageFacetPlot xName yName zName =
-  let encoding = VL.encoding
-            . VL.position VL.X [VL.PName xName, VL.PmType VL.Ordinal, VL.PAxis [VL.AxGrid False]]
-            . VL.position VL.Y [VL.PName yName, VL.PmType VL.Ordinal, VL.PSort [VL.Descending], VL.PAxis [VL.AxGrid False]]
-            . VL.fill [ VL.MName zName, VL.MmType VL.Quantitative, VL.MScale [VL.SScheme (pack "blues") [0.0, 1.0]], VL.MLegend [VL.LOrient VL.LOBottom]]
-            . VL.stroke [ VL.MName zName, VL.MmType VL.Quantitative, VL.MScale [VL.SScheme (pack "blues") [0.0, 1.0]],
-                          VL.MLegend [VL.LOrient VL.LOBottom, VL.LDirection VL.Horizontal, VL.LType VL.GradientLegend]]
-  in VL.asSpec [VL.mark VL.Rect [], encoding [], VL.width 200,  VL.height 100]
-
-data SpecGrid = H [[VL.VLSpec]] | V [[VL.VLSpec]] | L [VL.VLSpec] | S VL.VLSpec | F (Text, Int, VL.VLSpec)
-
-data InputData = Cols [(Text, VL.DataValues)]
-               | File FilePath
-
-plot :: (Double, Double) -> SpecGrid -> InputData -> VL.VegaLite
-plot (figw,figh) specGrid dataPoints =
-    let description = VL.description (pack "Plot")
-        dat' = case dataPoints of
-            Cols cols -> foldl (.) (VL.dataFromColumns []) (map (uncurry VL.dataColumn) cols) []
-            File fp -> VL.dataFromSource (pack fp) []
-        configure = VL.configure
-            . VL.configuration (VL.Axis
-                                        [ VL.Domain False,
-                                          VL.LabelColor (pack "#7F7F7F"),
-                                          VL.LabelPadding 4,
-                                          VL.TickColor (pack "#7F7F7F"),
-                                          VL.TickSize 5.67,
-                                          VL.Grid True,
-                                          VL.GridColor (pack "#FFFFFF")
-                                          ])
-        spec = case specGrid of
-            S s -> VL.layer [s]
-            L ls -> VL.layer ls
-            H lss -> VL.hConcat (map (VL.asSpec . (:[]) . VL.layer) lss)
-            V lss -> VL.vConcat (map (VL.asSpec . (:[]) . VL.layer) lss)
-            F (_, _, s) -> VL.specification s
-        facet = case specGrid of
-            F (field, nColumns, _) -> [VL.columns $ fromIntegral nColumns, VL.facetFlow [VL.FName field, VL.FmType VL.Nominal]]
-            _   -> [VL.width figw,  VL.height figh]
-    in VL.toVegaLite $ [VL.background (pack "#f9f9f9"), configure [], description, dat', spec] ++ facet
-
-
-
+-- MODELS FOR FIRST STEPS
 
 model1 :: MonadSample m => m Bool
 model1 = do
     b <- uniformD [False, True]
     return b
 
+model2 :: MonadInfer m => m Bool
+model2 = do
+    b <- uniformD [False, True]
+    score (if b then 1.0 else 0.0)
+    return b
+
+model3 :: MonadInfer m => m (Double, Double)
+model3 = do
+    b <- uniform (-1) 1
+    m <- uniform (-1) 1
+    condition $ (b-m) > 0
+    return (b, m)
+
+model4 :: MonadInfer m => m (Double, Double)
+model4 = do
+    b <- uniform (-1) 1
+    m <- uniform (-1) 1
+    condition $ (b-m) > 0
+    condition $ (b+m) > 0
+    return (b, m)
+
+-- FOR LINEAR REGRESSION
+-- Model Setup
+data Data
+  = Data
+      { xValue :: Double,
+        yValue :: Double
+      }
+  deriving (Eq, Show)
+
+data Params
+  = Params
+      { slope :: Double,
+        intercept :: Double,
+        noiseStd :: Double
+      }
+  deriving (Eq, Show)
+
+likelihood :: Params -> Data -> Log Double
+likelihood (Params m b nStd) (Data x y) = normalPdf (m*x + b) nStd y
+
+-- The Model As A Family Of Distributions
+
+params0 = Params {slope=2.3, intercept=(-1.2), noiseStd=2.0}
+
+samplingDistribution' :: Data -> Double
+samplingDistribution' = exp . ln . likelihood params0
+
+priorParams :: MonadSample m => m Params
+priorParams = do
+  intercept <- uniform (-5) 5
+  slope <- uniform (-5) 5
+  noise <- uniform 1 3
+  return $ Params slope intercept noise
+
+-- Generating Data - MCMC
+
+likelihoodDist :: MonadInfer m => Params -> m Data
+likelihoodDist params = do
+  x <- uniform (-10) 10
+  y <- uniform (-10) 10
+  score $ likelihood params (Data x y)
+  return $ Data x y
+
+-- Generating Data - Rejection Sampling
+
+uniform2D :: MonadSample m => m Data
+uniform2D = do
+  x <- uniform (-10) 10
+  y <- uniform (-10) 10
+  return $ Data x y
+
+-- Linear Regression - Inferring Slope and Intercept
+
+postParams :: MonadInfer m => m Params -> [Data] -> m Params
+postParams pr obs = do
+  param <- pr
+  forM_ obs (\point -> score (likelihood param point))
+  return param
+
+-- Simulating Data
+
+predDist :: MonadInfer m => m Params -> m Data
+predDist paramDist = do
+  params <- paramDist
+  point <- likelihoodDist params
+  return point
