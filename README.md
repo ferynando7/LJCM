@@ -1,5 +1,6 @@
 # MonadBayes
 
+Project based on https://www.tweag.io/blog/2020-02-26-monad-bayes-3/
 
 # Start guide (Based on Ubuntu)
 
